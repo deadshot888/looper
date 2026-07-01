@@ -1,6 +1,6 @@
 # Looper V0 Spec
 
-## Core thesis
+## Core Thesis
 
 Looper is a generic local-first loop runner for improving agentic systems.
 
@@ -10,11 +10,11 @@ It starts from a simple interface:
 editable artifact + eval command + gates = improvement loop
 ```
 
-## Primary user
+## Primary User
 
 A developer building or tuning an agentic system.
 
-## V0 positioning
+## V0 Positioning
 
 **Set up self-improving loops for your agents.**
 
@@ -33,24 +33,17 @@ V0 artifact types:
 | code | Python file |
 | generic | any file |
 
-## Loop lifecycle
+## Loop Lifecycle
 
 ```text
 init
-  ↓
-baseline
-  ↓
-variant generation
-  ↓
-evaluation
-  ↓
-gates
-  ↓
-selection
-  ↓
-report
-  ↓
-accept
+  -> baseline
+  -> variant generation
+  -> evaluation
+  -> gates
+  -> selection
+  -> report
+  -> accept
 ```
 
 ## Baseline
@@ -101,7 +94,7 @@ It should answer:
 - Which gates passed/failed?
 - Should I accept the diff?
 
-## Future direction
+## Future Direction
 
 After V0:
 

@@ -6,26 +6,27 @@
 - YAML config
 - local workspaces
 - stub mutator
+- command mutator
 - shell runner
 - JSON result parser
 - command gates
 - best-score selector
 - markdown report
 - accept winning diff
+- prompt optimization example
+- tool-schema optimization example
+- markdown agent-instruction optimization example
 
 ## V0.1: Real mutators
 
 - OpenAI provider
 - Anthropic provider
-- command mutator
 - mutation prompts per artifact type
 
 ## V0.2: Agent-native templates
 
-- prompt optimization
-- MCP tool-schema optimization
+- MCP tool-schema optimization template
 - RAG prompt/config optimization
-- markdown agent-instruction optimization
 
 ## V0.3: Git workflow
 

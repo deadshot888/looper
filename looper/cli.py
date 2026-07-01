@@ -15,6 +15,12 @@ from looper.core.state import StateStore
 app = typer.Typer(help="Set up self-improving loops for your agents.")
 console = Console()
 
+EXAMPLES = {
+    "prompt": "prompt_optimization",
+    "instructions": "agent_instructions",
+    "schema": "tool_schema",
+}
+
 
 def _gate_summary(exp: Experiment) -> str:
     if not exp.gates:
@@ -24,7 +30,10 @@ def _gate_summary(exp: Experiment) -> str:
 
 @app.command()
 def init(
-    example: Optional[str] = typer.Option(None, help="Initialize with an example, e.g. 'prompt'."),
+    example: Optional[str] = typer.Option(
+        None,
+        help="Initialize with an example: prompt, instructions, or schema.",
+    ),
 ) -> None:
     """Initialize a Looper project."""
     root = Path.cwd()
@@ -37,16 +46,21 @@ def init(
     if not store.path.exists():
         store.save(State())
 
-    if example == "prompt":
-        src = root / "examples" / "prompt_optimization" / "looper.yaml"
+    if example is not None:
+        example_dir = EXAMPLES.get(example)
+        if example_dir is None:
+            available = ", ".join(sorted(EXAMPLES))
+            raise typer.BadParameter(f"Unknown example {example!r}. Choose one of: {available}.")
+
+        src = root / "examples" / example_dir / "looper.yaml"
         dst = root / "looper.yaml"
         if src.exists() and not dst.exists():
             shutil.copyfile(src, dst)
-            console.print("[green]Created looper.yaml from prompt example.[/green]")
+            console.print(f"[green]Created looper.yaml from {example} example.[/green]")
         elif dst.exists():
             console.print("[yellow]looper.yaml already exists; leaving it unchanged.[/yellow]")
         else:
-            console.print("[yellow]Prompt example not found; created .looper directory only.[/yellow]")
+            console.print(f"[yellow]{example} example not found; created .looper directory only.[/yellow]")
     else:
         cfg = root / "looper.yaml"
         if not cfg.exists():

@@ -1,40 +1,31 @@
 # Architecture
 
-## Core components
+## Core Components
 
 ```text
 CLI
- ↓
-Config loader
- ↓
-Experiment engine
- ↓
-Workspace backend
- ↓
-Mutator
- ↓
-Runner
- ↓
-Gates
- ↓
-Evaluator/result parser
- ↓
-Selector
- ↓
-Report
+  -> Config loader
+  -> Experiment engine
+  -> Workspace backend
+  -> Mutator
+  -> Runner
+  -> Gates
+  -> Evaluator/result parser
+  -> Selector
+  -> Report
 ```
 
 ## Components
 
-### Config loader
+### Config Loader
 
 Reads `looper.yaml` and validates schema.
 
-### Workspace backend
+### Workspace Backend
 
 Creates isolated workspaces for experiments.
 
-V0 can use copy-based workspaces.
+V0 uses copy-based workspaces.
 V1 should support git worktrees.
 
 ### Mutator
@@ -43,8 +34,16 @@ Creates artifact variants.
 
 V0:
 
-- `stub` mutator for deterministic demos
+- `stub` mutator for deterministic text demos
 - `command` mutator for custom external mutation scripts
+
+The command mutator runs from the workspace root and receives:
+
+```text
+LOOPER_ARTIFACTS
+LOOPER_EXPERIMENT_INDEX
+LOOPER_WORKSPACE
+```
 
 Later:
 
@@ -80,9 +79,9 @@ Chooses the best passing experiment.
 
 ### Report
 
-Writes markdown/HTML summary.
+Writes a markdown summary.
 
-## State directory
+## State Directory
 
 ```text
 .looper/
@@ -92,7 +91,7 @@ Writes markdown/HTML summary.
   reports/
 ```
 
-## Important design constraints
+## Important Design Constraints
 
 - local-first
 - inspectable state
