@@ -57,16 +57,26 @@ V0 supports:
 
 ## Quickstart
 
-From a fresh clone:
+Install the package:
 
 ```bash
-pip install -e .
+pip install looper-agent
+```
 
+Then start with the prompt optimization example:
+
+```bash
 looper init --example prompt
 looper baseline
 looper run --rounds 1 --variants 3
 looper report
 looper accept best
+```
+
+For local development from a clone, use:
+
+```bash
+pip install -e .
 ```
 
 This writes local state under `.looper/`, including:

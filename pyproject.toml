@@ -1,9 +1,25 @@
 [project]
-name = "looper"
-version = "0.0.1"
+name = "looper-agent"
+version = "0.1.0"
 description = "Set up self-improving loops for your agents."
 readme = "README.md"
 requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "deadshot888" }
+]
+keywords = ["agents", "evals", "cli", "optimization", "prompts", "mcp"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Utilities",
+]
 dependencies = [
   "typer>=0.12.0",
   "pydantic>=2.7.0",
@@ -14,9 +30,18 @@ dependencies = [
 [project.scripts]
 looper = "looper.cli:app"
 
+[project.urls]
+Homepage = "https://github.com/deadshot888/looper"
+Repository = "https://github.com/deadshot888/looper"
+Issues = "https://github.com/deadshot888/looper/issues"
+Changelog = "https://github.com/deadshot888/looper/blob/main/CHANGELOG.md"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["looper"]

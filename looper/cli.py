@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import shutil
+from importlib import resources
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Optional
 
@@ -30,6 +32,29 @@ def _gate_summary(exp: Experiment) -> str:
     return ", ".join(f"{gate.name}={'pass' if gate.passed else 'fail'}" for gate in exp.gates)
 
 
+def _copy_resource_tree(source: Traversable, destination: Path) -> None:
+    destination.mkdir(parents=True, exist_ok=True)
+    for child in source.iterdir():
+        target = destination / child.name
+        if child.is_dir():
+            _copy_resource_tree(child, target)
+        elif not target.exists():
+            target.write_bytes(child.read_bytes())
+
+
+def _copy_example(example_dir: str, root: Path) -> Path | None:
+    dev_source = root / "examples" / example_dir
+    destination = root / "examples" / example_dir
+    if dev_source.exists():
+        return dev_source
+
+    package_source = resources.files("looper.templates").joinpath("examples", example_dir)
+    if not package_source.is_dir():
+        return None
+    _copy_resource_tree(package_source, destination)
+    return destination
+
+
 @app.command()
 def init(
     example: Optional[str] = typer.Option(
@@ -54,15 +79,20 @@ def init(
             available = ", ".join(sorted(EXAMPLES))
             raise typer.BadParameter(f"Unknown example {example!r}. Choose one of: {available}.")
 
-        src = root / "examples" / example_dir / "looper.yaml"
+        copied_example = _copy_example(example_dir, root)
+        if copied_example is None:
+            console.print(f"[yellow]{example} example not found; created .looper directory only.[/yellow]")
+            console.print("[green]Initialized .looper/[/green]")
+            return
+
+        src = copied_example / "looper.yaml"
         dst = root / "looper.yaml"
         if src.exists() and not dst.exists():
             shutil.copyfile(src, dst)
             console.print(f"[green]Created looper.yaml from {example} example.[/green]")
+            console.print(f"[green]Copied example files to examples/{example_dir}/[/green]")
         elif dst.exists():
             console.print("[yellow]looper.yaml already exists; leaving it unchanged.[/yellow]")
-        else:
-            console.print(f"[yellow]{example} example not found; created .looper directory only.[/yellow]")
     else:
         cfg = root / "looper.yaml"
         if not cfg.exists():
