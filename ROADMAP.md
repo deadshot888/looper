@@ -17,6 +17,7 @@
 - tool-schema optimization example
 - markdown agent-instruction optimization example
 - MCP tool-selection optimization example
+- Looper dogfood README optimization example
 
 ## V0.1: Real mutators
 

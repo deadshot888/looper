@@ -78,9 +78,24 @@ This writes local state under `.looper/`, including:
 
 The prompt example is deterministic. The stub mutator appends visible support-agent guidance, the eval scores the prompt, the gate checks for forbidden phrases, and `looper accept best` copies the winning prompt back into the working tree.
 
+## Dogfood Looper On This Repo
+
+Looper can optimize its own README with the reusable dogfood loop in `examples/repo_dogfood/`.
+
+```bash
+looper baseline --config examples/repo_dogfood/looper.yaml
+looper run --rounds 1 --variants 3 --config examples/repo_dogfood/looper.yaml
+looper report --config examples/repo_dogfood/looper.yaml
+looper accept best --config examples/repo_dogfood/looper.yaml
+```
+
+The dogfood eval rewards README variants that explain the self-improvement workflow, point to `.looper/reports/latest.md`, and keep the accepted change reviewable.
+
+After accepting a dogfood result, review the diff and run `pytest` before committing or pushing the change.
+
 ## Included Examples
 
-Looper ships with four deterministic examples:
+Looper ships with five deterministic examples:
 
 | Example | Artifact type | Mutator | Start command |
 |---|---|---|---|
@@ -88,6 +103,7 @@ Looper ships with four deterministic examples:
 | Agent instructions | `markdown` | `stub` | `looper init --example instructions` |
 | Tool schema | `json` | `command` | `looper init --example schema` |
 | MCP tool selection | `json` | `command` | `looper init --example mcp` |
+| Looper dogfood | `markdown` | `command` | `looper init --example dogfood` |
 
 Each example uses the same workflow:
 

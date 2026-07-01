@@ -1,0 +1,27 @@
+name: improve-looper-readme
+
+artifacts:
+  - id: looper_readme
+    type: markdown
+    path: README.md
+
+runner:
+  command: "python examples/repo_dogfood/evals/run_eval.py"
+  result_path: ".looper/result.json"
+
+metric:
+  name: score
+  direction: maximize
+
+gates:
+  - name: readme_sanity
+    command: "python examples/repo_dogfood/evals/gate_readme.py"
+
+search:
+  variants_per_round: 3
+  rounds: 1
+  selector: best_score_with_gates
+
+mutator:
+  provider: command
+  command: "python examples/repo_dogfood/mutators/improve_readme.py"

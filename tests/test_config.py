@@ -16,6 +16,7 @@ def test_load_all_example_configs():
         Path("examples/agent_instructions/looper.yaml"),
         Path("examples/tool_schema/looper.yaml"),
         Path("examples/mcp_tool_selection/looper.yaml"),
+        Path("examples/repo_dogfood/looper.yaml"),
     ]
 
     configs = [load_config(path) for path in paths]
@@ -25,9 +26,12 @@ def test_load_all_example_configs():
         "improve-agent-instructions",
         "improve-tool-schema",
         "improve-mcp-tool-selection",
+        "improve-looper-readme",
     ]
     assert configs[1].artifacts[0].type == "markdown"
     assert configs[2].artifacts[0].type == "json"
     assert configs[2].mutator.provider == "command"
     assert configs[3].artifacts[0].type == "json"
     assert configs[3].mutator.provider == "command"
+    assert configs[4].artifacts[0].path == "README.md"
+    assert configs[4].mutator.provider == "command"
