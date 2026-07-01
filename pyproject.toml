@@ -1,0 +1,22 @@
+[project]
+name = "looper"
+version = "0.0.1"
+description = "Set up self-improving loops for your agents."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "typer>=0.12.0",
+  "pydantic>=2.7.0",
+  "pyyaml>=6.0.0",
+  "rich>=13.0.0"
+]
+
+[project.scripts]
+looper = "looper.cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
