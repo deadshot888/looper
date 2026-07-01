@@ -80,13 +80,14 @@ The prompt example is deterministic. The stub mutator appends visible support-ag
 
 ## Included Examples
 
-Looper ships with three deterministic examples:
+Looper ships with four deterministic examples:
 
 | Example | Artifact type | Mutator | Start command |
 |---|---|---|---|
 | Prompt optimization | `prompt` | `stub` | `looper init --example prompt` |
 | Agent instructions | `markdown` | `stub` | `looper init --example instructions` |
 | Tool schema | `json` | `command` | `looper init --example schema` |
+| MCP tool selection | `json` | `command` | `looper init --example mcp` |
 
 Each example uses the same workflow:
 

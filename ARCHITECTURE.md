@@ -37,6 +37,8 @@ V0:
 - `stub` mutator for deterministic text demos
 - `command` mutator for custom external mutation scripts
 
+The included command-mutator examples cover JSON tool schemas and MCP tool-selection metadata.
+
 The command mutator runs from the workspace root and receives:
 
 ```text

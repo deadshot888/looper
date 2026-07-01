@@ -19,6 +19,7 @@ EXAMPLES = {
     "prompt": "prompt_optimization",
     "instructions": "agent_instructions",
     "schema": "tool_schema",
+    "mcp": "mcp_tool_selection",
 }
 
 
@@ -32,7 +33,7 @@ def _gate_summary(exp: Experiment) -> str:
 def init(
     example: Optional[str] = typer.Option(
         None,
-        help="Initialize with an example: prompt, instructions, or schema.",
+        help="Initialize with an example: prompt, instructions, schema, or mcp.",
     ),
 ) -> None:
     """Initialize a Looper project."""

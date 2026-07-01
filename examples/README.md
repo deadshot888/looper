@@ -37,3 +37,15 @@ looper accept best
 ```
 
 Optimizes `examples/tool_schema/schemas/lookup_customer.json` with a command mutator.
+
+## MCP Tool Selection
+
+```bash
+looper init --example mcp
+looper baseline
+looper run --rounds 1 --variants 3
+looper report
+looper accept best
+```
+
+Optimizes `examples/mcp_tool_selection/server/tools.json` for MCP tool-selection clarity, parameter descriptions, and write-action confirmation.
