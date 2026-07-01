@@ -4,7 +4,6 @@
 
 Looper is an open-source experiment runner for agentic systems. Give it an editable artifact, an eval command, and gates. It generates variants, runs the evals, discards unsafe changes, and keeps what improves.
 
-> Working tagline. We can refine later.
 
 ## What Looper Does
 
