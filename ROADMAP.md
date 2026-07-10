@@ -12,6 +12,10 @@
 - command gates
 - best-score selector
 - markdown report
+- static HTML dashboard
+- Python 3 runtime shims for `python` and `python3`
+- hypothesis, diff, and version ledger logging
+- per-version review notes
 - accept winning diff
 - prompt optimization example
 - tool-schema optimization example
@@ -56,4 +60,4 @@
 - remote parallel runs
 - team experiment history
 - private eval registry
-- dashboard
+- hosted dashboard

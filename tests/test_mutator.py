@@ -23,6 +23,13 @@ path = Path(json.loads(os.environ["LOOPER_ARTIFACTS"])[0])
 data = json.loads(path.read_text(encoding="utf-8"))
 data["variant"] = int(os.environ["LOOPER_EXPERIMENT_INDEX"])
 path.write_text(json.dumps(data), encoding="utf-8")
+Path(os.environ["LOOPER_MUTATION_META_PATH"]).write_text(
+    json.dumps({
+        "hypothesis": "Adding a variant marker improves schema traceability.",
+        "changes": ["Added variant marker to schema.json."],
+    }),
+    encoding="utf-8",
+)
 """.strip(),
         encoding="utf-8",
     )
@@ -38,9 +45,11 @@ path.write_text(json.dumps(data), encoding="utf-8")
         }
     )
 
-    changed = Mutator(cfg).mutate(tmp_path, 2)
+    result = Mutator(cfg).mutate(tmp_path, 2)
 
-    assert changed == ["schema.json"]
+    assert result.artifacts == ["schema.json"]
+    assert result.hypothesis == "Adding a variant marker improves schema traceability."
+    assert result.change_summary == "Added variant marker to schema.json."
     assert json.loads(artifact.read_text(encoding="utf-8"))["variant"] == 2
 
 

@@ -132,15 +132,29 @@ def run(
     best = state.best_experiment_id or "none"
     improvement = "yes" if state.improvement_found else "no"
     console.print(f"[green]Run complete. Best experiment: {best}. Improves baseline: {improvement}[/green]")
+    report_path = engine.generate_report()
+    dashboard_path = engine.generate_dashboard()
+    console.print(f"[green]Report written to {report_path}[/green]")
+    console.print(f"[green]Dashboard written to {dashboard_path}[/green]")
 
 
 @app.command()
 def report(config: str = typer.Option("looper.yaml", help="Path to config file.")) -> None:
-    """Generate a markdown report."""
+    """Generate a markdown report and HTML dashboard."""
     cfg = load_config(Path(config))
     engine = Engine(cfg, Path.cwd())
     path = engine.generate_report()
     console.print(f"[green]Report written to {path}[/green]")
+    console.print(f"[green]Dashboard written to {engine.generate_dashboard()}[/green]")
+
+
+@app.command()
+def dashboard(config: str = typer.Option("looper.yaml", help="Path to config file.")) -> None:
+    """Generate the static HTML dashboard."""
+    cfg = load_config(Path(config))
+    engine = Engine(cfg, Path.cwd())
+    path = engine.generate_dashboard()
+    console.print(f"[green]Dashboard written to {path}[/green]")
 
 
 @app.command()

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-import sys
+from dataclasses import dataclass
 from pathlib import Path
 
+from looper.core.command_env import build_command_env
 from looper.core.config import ArtifactConfig, LooperConfig
 
 
@@ -17,29 +17,52 @@ STUB_IMPROVEMENTS = [
 ]
 
 
+@dataclass
+class MutationResult:
+    artifacts: list[str]
+    hypothesis: str
+    change_summary: str
+
+
 class Mutator:
     def __init__(self, cfg: LooperConfig):
         self.cfg = cfg
 
-    def mutate(self, workspace: Path, experiment_index: int) -> list[str]:
+    def mutate(self, workspace: Path, experiment_index: int) -> MutationResult:
         if self.cfg.mutator.provider == "command":
             return self._mutate_with_command(workspace, experiment_index)
 
         changed: list[str] = []
+        summaries: list[str] = []
         for artifact in self.cfg.artifacts:
-            changed.extend(self._mutate_artifact(workspace, artifact, experiment_index))
-        return changed
+            artifact_changes = self._mutate_artifact(workspace, artifact, experiment_index)
+            changed.extend(artifact_changes)
+            if artifact_changes:
+                summaries.append(f"Updated {artifact.path} with built-in guidance variant.")
+        return MutationResult(
+            artifacts=changed,
+            hypothesis=self._stub_hypothesis(experiment_index),
+            change_summary=" ".join(summaries) or "No artifact changes were produced.",
+        )
 
-    def _mutate_with_command(self, workspace: Path, experiment_index: int) -> list[str]:
+    def _mutate_with_command(self, workspace: Path, experiment_index: int) -> MutationResult:
         if not self.cfg.mutator.command:
             raise ValueError("mutator.command is required when mutator.provider is 'command'.")
 
         artifact_paths = [artifact.path for artifact in self.cfg.artifacts]
-        env = os.environ.copy()
-        env["LOOPER_EXPERIMENT_INDEX"] = str(experiment_index)
-        env["LOOPER_ARTIFACTS"] = json.dumps(artifact_paths)
-        env["LOOPER_WORKSPACE"] = str(workspace)
-        env["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{env.get('PATH', '')}"
+        metadata_path = workspace / ".looper" / "mutation.json"
+        if metadata_path.exists():
+            metadata_path.unlink()
+        env = build_command_env(
+            workspace,
+            artifact_paths,
+            f"exp_{experiment_index + 1:04d}",
+            {
+                "LOOPER_EXPERIMENT_INDEX": str(experiment_index),
+                "LOOPER_MUTATION_META_PATH": str(metadata_path),
+                "LOOPER_WORKSPACE": str(workspace),
+            },
+        )
 
         completed = subprocess.run(
             self.cfg.mutator.command,
@@ -54,7 +77,21 @@ class Mutator:
                 f"Mutator command failed with exit code {completed.returncode}\n"
                 f"STDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
             )
-        return artifact_paths
+        metadata = self._read_metadata(metadata_path)
+        metadata_artifacts = metadata.get("artifacts")
+        changed_artifacts = (
+            [str(path) for path in metadata_artifacts]
+            if isinstance(metadata_artifacts, list)
+            else artifact_paths
+        )
+        return MutationResult(
+            artifacts=changed_artifacts,
+            hypothesis=str(
+                metadata.get("hypothesis")
+                or f"Command variant {experiment_index + 1} tests whether the generated artifact changes improve {self.cfg.metric.name} while passing gates."
+            ),
+            change_summary=self._change_summary(metadata),
+        )
 
     def _mutate_artifact(
         self,
@@ -82,3 +119,31 @@ class Mutator:
         raise NotImplementedError(
             f"Mutator provider {self.cfg.mutator.provider!r} is not implemented in V0 starter."
         )
+
+    def _stub_hypothesis(self, experiment_index: int) -> str:
+        count = experiment_index % len(STUB_IMPROVEMENTS) + 1
+        return (
+            f"Variant {experiment_index + 1} tests whether adding {count} explicit agent behavior "
+            f"rule(s) improves {self.cfg.metric.name} without breaking gates."
+        )
+
+    def _read_metadata(self, metadata_path: Path) -> dict:
+        if not metadata_path.exists():
+            return {}
+        try:
+            raw = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Mutator metadata is invalid JSON: {metadata_path}: {exc}") from exc
+        if not isinstance(raw, dict):
+            raise ValueError(f"Mutator metadata must be a JSON object: {metadata_path}")
+        return raw
+
+    def _change_summary(self, metadata: dict) -> str:
+        changes = metadata.get("changes") or metadata.get("change_summary")
+        if isinstance(changes, list):
+            rendered = "; ".join(str(change) for change in changes if str(change).strip())
+            if rendered:
+                return rendered
+        if isinstance(changes, str) and changes.strip():
+            return changes.strip()
+        return "Command mutator changed the configured artifact set."

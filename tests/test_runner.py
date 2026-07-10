@@ -61,3 +61,27 @@ Path(os.environ["LOOPER_RESULT_PATH"]).write_text("{", encoding="utf-8")
 
     with pytest.raises(ValueError, match="invalid JSON"):
         Runner(_cfg(f'"{sys.executable}" "{script}"')).run(tmp_path, "exp_bad")
+
+
+def test_runner_resolves_python3_to_active_runtime(tmp_path):
+    script = tmp_path / "write_result_with_python3.py"
+    script.write_text(
+        """
+import json
+import os
+from pathlib import Path
+
+Path(os.environ["LOOPER_RESULT_PATH"]).write_text(
+    json.dumps({"score": 1.0, "metrics": {"python": os.environ["LOOPER_PYTHON_VERSION"]}}),
+    encoding="utf-8",
+)
+print(os.environ["LOOPER_PYTHON"])
+""".strip(),
+        encoding="utf-8",
+    )
+
+    result, stdout, _ = Runner(_cfg(f'python3 "{script}"')).run(tmp_path, "exp_python3")
+
+    assert result.score == 1.0
+    assert result.metrics["python"]
+    assert stdout.strip()

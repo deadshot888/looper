@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-import sys
 from pathlib import Path
 
 from looper.core.config import LooperConfig
+from looper.core.command_env import build_command_env
 from looper.core.models import RunResult
 
 
@@ -20,11 +19,12 @@ class Runner:
         if result_path.exists():
             result_path.unlink()
 
-        env = os.environ.copy()
-        env["LOOPER_RESULT_PATH"] = str(result_path)
-        env["LOOPER_EXPERIMENT_ID"] = experiment_id
-        env["LOOPER_ARTIFACTS"] = json.dumps([a.path for a in self.cfg.artifacts])
-        env["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{env.get('PATH', '')}"
+        env = build_command_env(
+            workspace,
+            [a.path for a in self.cfg.artifacts],
+            experiment_id,
+            {"LOOPER_RESULT_PATH": str(result_path)},
+        )
 
         completed = subprocess.run(
             self.cfg.runner.command,

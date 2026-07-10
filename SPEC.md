@@ -58,13 +58,17 @@ Each variant should store:
 
 - id
 - parent
+- hypothesis
+- change summary
 - artifact changes
+- patch path
 - score
 - metric details
 - gates
 - stdout/stderr
 - workspace path
 - status
+- generated review
 
 ## Gates
 
@@ -91,8 +95,13 @@ It should answer:
 - Which variant won?
 - By how much?
 - What changed?
+- What hypothesis was tested?
+- What worked in each version?
+- What still needs improvement?
 - Which gates passed/failed?
 - Should I accept the diff?
+
+The Markdown report is paired with a static HTML dashboard for quick comparison across versions. Both are local artifacts under `.looper/reports/`.
 
 ## Future Direction
 

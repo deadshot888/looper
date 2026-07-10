@@ -47,11 +47,13 @@ V0 supports:
 - one or more editable artifacts
 - local copy-based workspace isolation
 - shell-based runner
+- Python 3 command shims for `python` and `python3`
 - JSON result contract
 - command-based gates
 - stub and command mutators
-- best-score selector
-- markdown report
+- best-score selector with per-version reviews
+- hypothesis, diff, and version ledger logging
+- markdown report and static HTML dashboard
 - accept winning diff
 
 ## Quickstart
@@ -82,10 +84,44 @@ This writes local state under `.looper/`, including:
 
 - `.looper/experiments/baseline/result.json`
 - `.looper/experiments/exp_0001/result.json`
+- `.looper/experiments/exp_0001/diff.patch`
+- `.looper/experiments/exp_0001/review.md`
 - `.looper/reports/latest.md`
+- `.looper/reports/dashboard.html`
+- `.looper/versions.jsonl`
 - `.looper/workspaces/exp_0001/`
 
 The prompt example is deterministic. The stub mutator appends visible support-agent guidance, the eval scores the prompt, the gate checks for forbidden phrases, and `looper accept best` copies the winning prompt back into the working tree.
+
+## Python Runtime
+
+Looper targets Python 3.11+ and is compatible with newer Python 3 releases. When it runs evals, gates, or command mutators, it creates local `.looper/bin/python` and `.looper/bin/python3` launchers that point to the Python executable running Looper. That means example configs can keep using simple commands such as:
+
+```yaml
+runner:
+  command: "python examples/prompt_optimization/evals/run_eval.py"
+```
+
+Set `LOOPER_PYTHON=/path/to/python` before running Looper if you want those commands to use a specific Python 3 interpreter.
+
+## Reviewing Versions
+
+Every new version is recorded with:
+
+- the hypothesis being tested
+- a summary of what changed
+- a patch file for the edited artifacts
+- the score, gates, stdout, and stderr
+- a generated review with what worked, what needs improvement, and a recommendation
+
+The append-only ledger is `.looper/versions.jsonl`. The human-friendly surfaces are:
+
+```bash
+looper report
+looper dashboard
+```
+
+The dashboard is a static HTML file, so it can be opened directly from `.looper/reports/dashboard.html`.
 
 ## Dogfood Looper On This Repo
 
@@ -177,8 +213,21 @@ Set `mutator.provider: command` when you want a local script to edit artifacts. 
 - `LOOPER_ARTIFACTS`: JSON list of configured artifact paths
 - `LOOPER_EXPERIMENT_INDEX`: zero-based variant index
 - `LOOPER_WORKSPACE`: path to the isolated workspace
+- `LOOPER_MUTATION_META_PATH`: optional JSON file path for version metadata
+- `LOOPER_PYTHON`: Python executable used by Looper
+- `LOOPER_PYTHON_VERSION`: Python version used by Looper
 
 The command should edit the configured artifact files in place and exit with code `0`.
+
+To make the version log more useful, command mutators can write metadata to `LOOPER_MUTATION_META_PATH`:
+
+```json
+{
+  "hypothesis": "Adding explicit confirmation language will reduce unsafe tool calls.",
+  "changes": ["Added confirmation requirement to update_deal."],
+  "artifacts": ["server/tools.json"]
+}
+```
 
 ## What Looper Is Not
 

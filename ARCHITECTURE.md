@@ -12,7 +12,7 @@ CLI
   -> Gates
   -> Evaluator/result parser
   -> Selector
-  -> Report
+  -> Review + Report + Dashboard
 ```
 
 ## Components
@@ -45,7 +45,12 @@ The command mutator runs from the workspace root and receives:
 LOOPER_ARTIFACTS
 LOOPER_EXPERIMENT_INDEX
 LOOPER_WORKSPACE
+LOOPER_MUTATION_META_PATH
+LOOPER_PYTHON
+LOOPER_PYTHON_VERSION
 ```
+
+If the command writes JSON to `LOOPER_MUTATION_META_PATH`, Looper records the variant hypothesis, change summary, and changed artifact list in the version ledger.
 
 Later:
 
@@ -65,7 +70,11 @@ It injects:
 LOOPER_RESULT_PATH
 LOOPER_ARTIFACTS
 LOOPER_EXPERIMENT_ID
+LOOPER_PYTHON
+LOOPER_PYTHON_VERSION
 ```
+
+Looper creates `.looper/bin/python` and `.looper/bin/python3` launchers in the workspace before command execution. Both point to the active Python 3 runtime, or to `LOOPER_PYTHON` when explicitly set.
 
 ### Evaluator
 
@@ -79,18 +88,34 @@ Runs pass/fail shell commands.
 
 Chooses the best passing experiment.
 
-### Report
+### Review
 
-Writes a markdown summary.
+Evaluates every version against the baseline and records:
+
+- what worked
+- what needs improvement
+- whether the version is accept-ready, blocked, or useful for parts
+
+### Report + Dashboard
+
+Writes a markdown summary and a static HTML dashboard. The dashboard is generated under `.looper/reports/dashboard.html`.
 
 ## State Directory
 
 ```text
 .looper/
   state.json
+  versions.jsonl
   workspaces/
   experiments/
+    exp_0001/
+      result.json
+      gates.json
+      diff.patch
+      review.md
   reports/
+    latest.md
+    dashboard.html
 ```
 
 ## Important Design Constraints
