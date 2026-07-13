@@ -4,8 +4,27 @@ import json
 import os
 import platform
 import stat
+import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
+
+from looper.core.config import ExecutionConfig
+
+ESSENTIAL_ENV = {
+    "COMSPEC",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "PATH",
+    "PATHEXT",
+    "SYSTEMDRIVE",
+    "SYSTEMROOT",
+    "TEMP",
+    "TMP",
+    "USERPROFILE",
+    "WINDIR",
+}
 
 
 def active_python() -> Path:
@@ -16,16 +35,40 @@ def active_python() -> Path:
 
 
 def active_python_version() -> str:
-    return platform.python_version()
+    return _python_version(str(active_python()))
+
+
+@lru_cache
+def _python_version(executable: str) -> str:
+    python = Path(executable)
+    if python.resolve() == Path(sys.executable).resolve():
+        return platform.python_version()
+    try:
+        completed = subprocess.run(
+            [str(python), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return "unknown"
+    output = (completed.stdout or completed.stderr).strip()
+    return output.removeprefix("Python ") if completed.returncode == 0 else "unknown"
 
 
 def build_command_env(
     workspace: Path,
     artifact_paths: list[str],
     experiment_id: str,
+    execution: ExecutionConfig | None = None,
     extra: dict[str, str] | None = None,
 ) -> dict[str, str]:
-    env = os.environ.copy()
+    execution = execution or ExecutionConfig()
+    if execution.inherit_env:
+        env = os.environ.copy()
+    else:
+        allowed = ESSENTIAL_ENV | set(execution.env_allowlist)
+        env = {key: value for key, value in os.environ.items() if key.upper() in allowed or key in allowed}
     shim_dir = ensure_python_shims(workspace)
     python = active_python()
 

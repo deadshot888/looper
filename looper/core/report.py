@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+from importlib import resources
 from pathlib import Path
 
 from looper.core.command_env import active_python, active_python_version
@@ -38,19 +39,26 @@ class Reporter:
             lines.append("- No baseline run found.")
 
         lines.extend(["", "## Version Ledger", ""])
+        if state.session:
+            lines.append(f"- Session: `{state.session.id}`")
+            lines.append(f"- Config hash: `{state.session.config_hash}`")
+            lines.append(f"- Git commit: `{state.session.git_commit or 'n/a'}`")
         lines.append(f"- Dashboard: `{self._relative(dashboard)}`")
         lines.append("- Append-only log: `.looper/versions.jsonl`")
         lines.append(f"- Runtime: Python `{active_python_version()}` at `{active_python()}`")
 
         lines.extend(["", "## Experiments", ""])
 
+        if state.stop_reason:
+            lines.extend([f"Stopped early: {state.stop_reason}", ""])
+
         if not state.experiments:
             lines.append("No experiments found.")
         else:
             lines.append(
-                "| Experiment | Score | Delta | Status | Gates | Hypothesis | Diff | Recommendation |"
+                "| Experiment | Parent | Score | Samples | Delta | Status | Gates | Time | Cost | Hypothesis | Diff | Recommendation |"
             )
-            lines.append("|---|---:|---:|---|---|---|---|---|")
+            lines.append("|---|---|---:|---:|---:|---|---|---:|---:|---|---|---|")
             for exp in state.experiments:
                 diff = f"`{self._display_path(exp.diff_path)}`" if exp.diff_path else "n/a"
                 lines.append(
@@ -58,10 +66,14 @@ class Reporter:
                     + " | ".join(
                         [
                             exp.id,
+                            exp.parent,
                             self._score(exp),
+                            str(len(exp.score_samples) or (1 if exp.score is not None else 0)),
                             self._delta(exp, state.baseline),
                             exp.status,
                             self._gate_summary(exp),
+                            f"{exp.duration_seconds:.2f}s",
+                            f"${exp.cost_usd:.4f}",
                             self._md_cell(exp.hypothesis),
                             diff,
                             self._md_cell(self._review(exp).recommendation),
@@ -109,7 +121,9 @@ class Reporter:
 
         lines.extend(["## Next Recommended Action", ""])
         if best and state.improvement_found:
-            lines.append("Inspect the selected diff, then accept it or copy the useful parts into a new variant:")
+            lines.append(
+                "Inspect the selected diff, then accept it or copy the useful parts into a new variant:"
+            )
             lines.append("")
             lines.append("```bash")
             lines.append("looper accept best")
@@ -140,10 +154,12 @@ class Reporter:
         min_score = min(score_values) if score_values else 0.0
         max_score = max(score_values) if score_values else 1.0
 
-        rows = "\n".join(
-            self._version_row(exp, state.baseline, min_score, max_score)
-            for exp in state.experiments
-        ) or '<p class="empty">No experiment versions yet.</p>'
+        rows = (
+            "\n".join(
+                self._version_row(exp, state.baseline, min_score, max_score) for exp in state.experiments
+            )
+            or '<p class="empty">No experiment versions yet.</p>'
+        )
 
         reviews = "\n".join(self._review_panel(exp, state.baseline) for exp in versions)
         best_title = html.escape(best.id if best else "No candidate")
@@ -153,6 +169,9 @@ class Reporter:
             f"{len(state.experiments)} experiment version(s) compared against "
             f"baseline {self._score(state.baseline)}."
         )
+        dashboard_css = (
+            resources.files("looper.templates").joinpath("dashboard.css").read_text(encoding="utf-8")
+        )
 
         return f"""<!doctype html>
 <html lang="en">
@@ -160,169 +179,7 @@ class Reporter:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Looper Dashboard - {html.escape(self.cfg.name)}</title>
-  <style>
-    :root {{
-      --bg: #f6f7f9;
-      --panel: #ffffff;
-      --ink: #18191f;
-      --muted: #5f6673;
-      --line: #d9dee7;
-      --teal: #0f766e;
-      --blue: #2563eb;
-      --amber: #b45309;
-      --rose: #be123c;
-      --green-soft: #dff6ed;
-      --blue-soft: #e6efff;
-      --amber-soft: #fff3d6;
-      --rose-soft: #ffe4e8;
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.45;
-    }}
-    header {{
-      display: flex;
-      justify-content: space-between;
-      gap: 24px;
-      padding: 28px clamp(18px, 5vw, 56px) 20px;
-      border-bottom: 1px solid var(--line);
-      background: #ffffff;
-    }}
-    h1, h2, h3, p {{ margin-top: 0; }}
-    h1 {{ margin-bottom: 6px; font-size: 30px; line-height: 1.12; letter-spacing: 0; }}
-    h2 {{ font-size: 17px; margin-bottom: 14px; letter-spacing: 0; }}
-    h3 {{ font-size: 15px; margin-bottom: 8px; letter-spacing: 0; }}
-    main {{ padding: 22px clamp(18px, 5vw, 56px) 48px; }}
-    .eyebrow {{
-      margin-bottom: 8px;
-      color: var(--teal);
-      font-size: 12px;
-      font-weight: 750;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-    }}
-    .subtitle {{ max-width: 820px; color: var(--muted); margin-bottom: 0; }}
-    .runtime {{
-      min-width: 220px;
-      align-self: start;
-      padding-top: 2px;
-      color: var(--muted);
-      font-size: 13px;
-      text-align: right;
-    }}
-    .runtime strong {{ display: block; color: var(--ink); font-size: 14px; }}
-    .band {{
-      width: 100%;
-      margin-top: 18px;
-      padding: 18px;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      border-radius: 8px;
-    }}
-    .kpis {{
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-    }}
-    .kpi {{
-      min-height: 96px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #ffffff;
-    }}
-    .label {{ color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }}
-    .value {{ margin-top: 10px; font-size: 24px; line-height: 1.1; font-weight: 780; }}
-    .note {{ color: var(--muted); font-size: 13px; margin: 8px 0 0; }}
-    .candidate {{
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
-      gap: 18px;
-      align-items: start;
-    }}
-    .pillrow {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }}
-    .pill {{
-      display: inline-flex;
-      align-items: center;
-      min-height: 26px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 650;
-    }}
-    .pill.good {{ background: var(--green-soft); color: #075f54; border-color: #b7e9d6; }}
-    .pill.warn {{ background: var(--amber-soft); color: #824007; border-color: #f1d28b; }}
-    .pill.bad {{ background: var(--rose-soft); color: #9f1239; border-color: #f4b8c2; }}
-    .version-list {{ display: grid; gap: 10px; }}
-    .version-row {{
-      display: grid;
-      grid-template-columns: 120px 110px minmax(180px, 1fr) 120px;
-      gap: 12px;
-      align-items: center;
-      padding: 13px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #ffffff;
-    }}
-    .scorebar {{
-      height: 10px;
-      width: 100%;
-      overflow: hidden;
-      border-radius: 999px;
-      background: #e8ebf0;
-    }}
-    .scorebar span {{ display: block; height: 100%; border-radius: 999px; background: var(--blue); }}
-    .scorebar span.pass {{ background: var(--teal); }}
-    .scorebar span.fail {{ background: var(--rose); }}
-    .status {{
-      justify-self: start;
-      min-width: 72px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 750;
-      text-align: center;
-    }}
-    .status.passed {{ background: var(--green-soft); color: #075f54; }}
-    .status.failed, .status.error {{ background: var(--rose-soft); color: #9f1239; }}
-    .review-grid {{
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }}
-    .review-panel {{
-      padding: 15px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #ffffff;
-    }}
-    .review-panel ul {{ margin: 8px 0 0; padding-left: 18px; }}
-    .review-panel li {{ margin: 6px 0; color: var(--muted); }}
-    .summary {{ color: var(--muted); margin-bottom: 12px; }}
-    .links {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }}
-    .links a {{ color: var(--blue); font-weight: 700; text-decoration: none; }}
-    .links a:hover {{ text-decoration: underline; }}
-    .empty {{ color: var(--muted); margin-bottom: 0; }}
-    @media (max-width: 900px) {{
-      header, .candidate {{ grid-template-columns: 1fr; display: grid; }}
-      header {{ gap: 12px; }}
-      .runtime {{ text-align: left; }}
-      .kpis, .review-grid {{ grid-template-columns: 1fr 1fr; }}
-      .version-row {{ grid-template-columns: 1fr; }}
-    }}
-    @media (max-width: 560px) {{
-      .kpis, .review-grid {{ grid-template-columns: 1fr; }}
-      h1 {{ font-size: 25px; }}
-      .value {{ font-size: 21px; }}
-    }}
-  </style>
+  <style>{dashboard_css}</style>
 </head>
 <body>
   <header>
@@ -355,9 +212,9 @@ class Reporter:
       <div>
         <h2>Decision Signals</h2>
         <div class="pillrow">
-          <span class="pill {'good' if state.improvement_found else 'warn'}">Improves baseline: {improvement}</span>
-          <span class="pill {'good' if best and best.gates_passed else 'bad'}">Gates: {html.escape(self._gate_summary(best) if best else 'n/a')}</span>
-          <span class="pill">Diff: {html.escape((self._display_path(best.diff_path) if best and best.diff_path else 'n/a'))}</span>
+          <span class="pill {"good" if state.improvement_found else "warn"}">Improves baseline: {improvement}</span>
+          <span class="pill {"good" if best and best.gates_passed else "bad"}">Gates: {html.escape(self._gate_summary(best) if best else "n/a")}</span>
+          <span class="pill">Diff: {html.escape(self._display_path(best.diff_path) if best and best.diff_path else "n/a")}</span>
         </div>
       </div>
     </section>
@@ -391,9 +248,9 @@ class Reporter:
         width = self._score_width(exp.score, min_score, max_score)
         bar_class = "pass" if exp.status == "passed" and exp.gates_passed else "fail"
         return f"""<div class="version-row">
-  <div><strong>{html.escape(exp.id)}</strong><p class="note">Round {exp.round_index or '-'} / Variant {exp.variant_index or '-'}</p></div>
+  <div><strong>{html.escape(exp.id)}</strong><p class="note">Round {exp.round_index or "-"} / Variant {exp.variant_index or "-"}</p></div>
   <div><div class="label">Score</div><strong>{html.escape(score)}</strong><p class="note">{html.escape(self._delta(exp, baseline))}</p></div>
-  <div><div class="scorebar" aria-label="score"><span class="{bar_class}" style="width:{width}%"></span></div><p class="note">{html.escape(exp.hypothesis or 'No hypothesis recorded.')}</p></div>
+  <div><div class="scorebar" aria-label="score"><span class="{bar_class}" style="width:{width}%"></span></div><p class="note">{html.escape(exp.hypothesis or "No hypothesis recorded.")}</p></div>
   <div><span class="status {html.escape(exp.status)}">{html.escape(exp.status)}</span></div>
 </div>"""
 
@@ -404,11 +261,11 @@ class Reporter:
         links = self._candidate_links(exp)
         return f"""<article class="review-panel">
   <h3>{html.escape(exp.id)} <span class="pill">{html.escape(self._delta(exp, baseline))}</span></h3>
-  <p class="summary">{html.escape(review.summary or 'No summary recorded.')}</p>
+  <p class="summary">{html.escape(review.summary or "No summary recorded.")}</p>
   <div class="label">What worked</div>
-  <ul>{worked or '<li>No clear positive signal yet.</li>'}</ul>
+  <ul>{worked or "<li>No clear positive signal yet.</li>"}</ul>
   <div class="label">What to improve</div>
-  <ul>{improve or '<li>Use manual review to decide what to keep.</li>'}</ul>
+  <ul>{improve or "<li>Use manual review to decide what to keep.</li>"}</ul>
   <p class="summary"><strong>Recommendation:</strong> {html.escape(review.recommendation)}</p>
   {links}
 </article>"""
@@ -438,10 +295,7 @@ class Reporter:
             return "n/a"
         if not exp.gates:
             return "none"
-        return ", ".join(
-            f"{gate.name}:{'pass' if gate.passed else 'fail'}"
-            for gate in exp.gates
-        )
+        return ", ".join(f"{gate.name}:{'pass' if gate.passed else 'fail'}" for gate in exp.gates)
 
     def _score(self, exp: Experiment | None) -> str:
         if exp is None or exp.score is None:
@@ -479,7 +333,7 @@ class Reporter:
     def _report_link(self, path: str) -> str:
         normalized = path.replace("\\", "/")
         if normalized.startswith(".looper/"):
-            return "../" + normalized[len(".looper/"):]
+            return "../" + normalized[len(".looper/") :]
         return normalized
 
     def _display_path(self, path: str) -> str:

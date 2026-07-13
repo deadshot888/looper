@@ -10,7 +10,8 @@ class Selector:
 
     def select_best(self, state: State) -> str | None:
         candidates = [
-            exp for exp in state.experiments
+            exp
+            for exp in state.experiments
             if exp.status == "passed" and exp.score is not None and exp.gates_passed
         ]
         if not candidates:
@@ -27,5 +28,12 @@ class Selector:
         if baseline is None or baseline.score is None or best is None or best.score is None:
             return False
         if self.cfg.metric.direction == "maximize":
-            return best.score > baseline.score
-        return best.score < baseline.score
+            return best.score - baseline.score > self.cfg.search.min_improvement
+        return baseline.score - best.score > self.cfg.search.min_improvement
+
+    def better_than(self, candidate: Experiment, parent: Experiment) -> bool:
+        if candidate.score is None or parent.score is None:
+            return False
+        if self.cfg.metric.direction == "maximize":
+            return candidate.score - parent.score > self.cfg.search.min_improvement
+        return parent.score - candidate.score > self.cfg.search.min_improvement

@@ -25,6 +25,7 @@ def review_experiment(
         what_worked.append(exp.notes)
 
     if delta is not None:
+        assert directional_delta is not None
         if directional_delta > 0:
             what_worked.append(f"Improved the primary score by {_format_delta(delta)}.")
         elif directional_delta == 0:
@@ -37,9 +38,7 @@ def review_experiment(
         what_worked.extend(metric_changes[:2])
 
     if exp.diff_path:
-        what_worked.append(
-            f"Captured a reviewable diff with +{exp.additions}/-{exp.deletions} line changes."
-        )
+        what_worked.append(f"Captured a reviewable diff with +{exp.additions}/-{exp.deletions} line changes.")
     elif exp.id != "baseline":
         what_to_improve.append("No artifact diff was captured for this version.")
 

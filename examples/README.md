@@ -2,6 +2,8 @@
 
 These examples are deterministic and run without API keys.
 
+Every example supports `looper doctor`, iterative rounds, `looper diff`, and `looper accept best --dry-run` before application.
+
 ## Prompt Optimization
 
 ```bash
@@ -51,6 +53,16 @@ looper accept best
 Optimizes `examples/mcp_tool_selection/server/tools.json` for MCP tool-selection clarity, parameter descriptions, and write-action confirmation.
 
 ## Looper Dogfood
+
+```bash
+looper init --example dogfood
+looper doctor
+looper run --rounds 1 --variants 3
+looper accept best --dry-run
+looper accept best
+```
+
+Inside this repository, use the reusable configuration directly:
 
 ```bash
 looper baseline --config examples/repo_dogfood/looper.yaml

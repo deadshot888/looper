@@ -22,11 +22,7 @@ score = sum(1 for value in checks.values() if value) / len(checks)
 RESULT_PATH.parent.mkdir(parents=True, exist_ok=True)
 RESULT_PATH.write_text(
     json.dumps(
-        {
-            "score": score,
-            "metrics": checks,
-            "notes": "Toy deterministic eval for the starter repo."
-        },
+        {"score": score, "metrics": checks, "notes": "Toy deterministic eval for the starter repo."},
         indent=2,
     ),
     encoding="utf-8",

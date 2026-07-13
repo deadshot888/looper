@@ -32,13 +32,13 @@ search_props = props("search_deals")
 update_props = props("update_deal")
 
 all_parameter_descriptions = [
-    field.get("description", "")
-    for field in [*search_props.values(), *update_props.values()]
+    field.get("description", "") for field in [*search_props.values(), *update_props.values()]
 ]
 
 checks = {
     "selection_guidance_for_search": "use when" in search_description and "do not use" in search_description,
-    "selection_guidance_for_update": "use only" in update_description and "confirmation" in update_description,
+    "selection_guidance_for_update": "use only" in update_description
+    and "confirmation" in update_description,
     "parameters_are_described": all(len(text) >= 20 for text in all_parameter_descriptions),
     "write_tool_requires_confirmation": "confirmation" in required("update_deal"),
 }

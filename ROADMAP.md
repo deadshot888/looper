@@ -1,63 +1,43 @@
 # Roadmap
 
-## V0: Generic artifact loop
+Roadmap phases are intentionally separate from package release numbers.
 
-- CLI
-- YAML config
-- local workspaces
-- stub mutator
-- command mutator
-- shell runner
-- JSON result parser
-- command gates
-- best-score selector
-- markdown report
-- static HTML dashboard
-- Python 3 runtime shims for `python` and `python3`
-- hypothesis, diff, and version ledger logging
-- per-version review notes
-- accept winning diff
-- prompt optimization example
-- tool-schema optimization example
-- markdown agent-instruction optimization example
-- MCP tool-selection optimization example
-- Looper dogfood README optimization example
+## Completed: Trustworthy Local Loop
 
-## V0.1: Real mutators
+- strict configuration and path validation;
+- isolated baseline and candidate workspaces;
+- iterative parent/child rounds;
+- repeated evaluations, gates, thresholds, seeds, and budgets;
+- immutable candidate verification;
+- project/session fingerprints and atomic state;
+- review reports, dashboard, version ledger, acceptance dry-run and backups;
+- deterministic prompt, instruction, schema, MCP, and dogfood examples;
+- cross-platform CI and installed-wheel smoke tests.
 
-- OpenAI provider
-- Anthropic provider
-- mutation prompts per artifact type
+## Next: Model-backed Mutation
 
-## V0.2: Agent-native templates
+- OpenAI, Anthropic, and local-model adapters behind optional dependencies;
+- typed mutation prompts per artifact kind;
+- token/cost telemetry and provider retry policy;
+- redaction-safe environment and trace capture.
 
-- MCP tool-schema optimization template
-- RAG prompt/config optimization
+## Next: Search Quality
 
-## V0.3: Git workflow
+- statistical confidence intervals and paired evaluations;
+- top-k frontier, epsilon-greedy exploration and failure memory;
+- Pareto selection across quality, cost and latency;
+- experiment graph visualization and candidate combination.
 
-- git worktree backend
-- create branch
-- open PR through GitHub CLI
-- diff summary
+## Next: Repository Workflow
 
-## V0.4: Framework adapters
+- Git worktree backend;
+- branch/commit creation after acceptance;
+- optional pull-request workflow through GitHub CLI;
+- merge-conflict-aware patch application.
 
-- LangGraph discovery adapter
-- CrewAI discovery adapter
-- OpenAI Agents SDK adapter
+## Later: Framework and Hosted Adapters
 
-## V0.5: Better search
-
-- experiment graph
-- top-k frontier
-- epsilon greedy
-- Pareto selection
-- failure memory
-
-## V1: Hosted optional
-
-- remote parallel runs
-- team experiment history
-- private eval registry
-- hosted dashboard
+- LangGraph, CrewAI and OpenAI Agents SDK discovery;
+- RAG and workflow configuration templates;
+- remote workers and parallel scheduling;
+- shared private evaluation registries and team experiment history.

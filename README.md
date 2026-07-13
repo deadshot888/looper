@@ -1,165 +1,60 @@
 # Looper
 
-**Set up self-improving loops for your agents.**
+**Run inspectable improvement loops for agent artifacts.**
 
-Looper is an open-source experiment runner for agentic systems. Give it an editable artifact, an eval command, and gates. It generates variants, runs the evals, discards unsafe changes, and keeps what improves.
-
-
-## What Looper Does
-
-Looper turns this:
+Looper is a local experiment runner for prompts, tool schemas, agent instructions, workflow configuration, and code. It generates candidates, evaluates them repeatedly, applies hard gates, advances later rounds from the current winner, and keeps every decision reviewable before acceptance.
 
 ```text
-prompt / tool schema / RAG config / workflow / code
+baseline snapshot
+  -> generate candidate variants
+  -> evaluate + apply gates
+  -> verify candidate integrity
+  -> advance the round winner
+  -> report + inspect diff
+  -> dry-run acceptance
+  -> apply with conflict checks + rollback backup
 ```
 
-into this:
-
-```text
-baseline
-  -> generate variants
-  -> run evals
-  -> apply gates
-  -> select winner
-  -> produce diff + report
-  -> accept/reject
-```
-
-The initial version is framework-agnostic. It does not care whether the underlying agent is LangGraph, CrewAI, OpenAI Agents SDK, Claude Code, custom Python, or a shell script. As long as the system can be run through a command and produce a metric, Looper can optimize it.
-
-## Why This Exists
-
-Agent systems are still hand-tuned: prompts, tool descriptions, workflow configs, model choices, RAG parameters, and evals are manually edited until they "feel better."
-
-Looper makes that process experimental:
-
-- define what artifact can change
-- define how to run the system
-- define how to score it
-- define what must never regress
-- let agents try variants
-- keep only passing improvements
-
-## V0 Scope
-
-V0 supports:
-
-- one or more editable artifacts
-- local copy-based workspace isolation
-- shell-based runner
-- Python 3 command shims for `python` and `python3`
-- JSON result contract
-- command-based gates
-- stub and command mutators
-- best-score selector with per-version reviews
-- hypothesis, diff, and version ledger logging
-- markdown report and static HTML dashboard
-- accept winning diff
+Looper is framework-agnostic. The artifact mutator, evaluator, and gates can be any trusted local commands that follow the documented contracts.
 
 ## Quickstart
 
-Install the package:
-
 ```bash
 pip install looper-agent
-```
-
-Then start with the prompt optimization example:
-
-```bash
+mkdir looper-demo && cd looper-demo
 looper init --example prompt
+looper doctor
 looper baseline
-looper run --rounds 1 --variants 3
-looper report
+looper run --rounds 2 --variants 3
+looper list
+looper diff exp_0001
+looper accept best --dry-run
 looper accept best
 ```
 
-For local development from a clone, use:
+For development:
 
 ```bash
-pip install -e .
+python -m pip install -e ".[dev]"
+pytest
 ```
 
-This writes local state under `.looper/`, including:
+## Trust Model
 
-- `.looper/experiments/baseline/result.json`
-- `.looper/experiments/exp_0001/result.json`
-- `.looper/experiments/exp_0001/diff.patch`
-- `.looper/experiments/exp_0001/review.md`
-- `.looper/reports/latest.md`
-- `.looper/reports/dashboard.html`
-- `.looper/versions.jsonl`
-- `.looper/workspaces/exp_0001/`
+Commands configured as mutators, runners, and gates execute local code. Looper reduces accidental damage, but it is not a security sandbox.
 
-The prompt example is deterministic. The stub mutator appends visible support-agent guidance, the eval scores the prompt, the gate checks for forbidden phrases, and `looper accept best` copies the winning prompt back into the working tree.
+- Baselines and variants run in copy workspaces, never directly in the main checkout.
+- Artifact and result paths must remain inside their allowed roots.
+- Candidate artifact hashes are frozen before evaluation. A runner or gate that edits one causes the experiment to fail.
+- State records the configuration, baseline artifact hashes, Git revision, dirty-project fingerprint, seed, runtime, costs, and durations.
+- Acceptance checks that the project and candidate still match those recorded hashes.
+- Multi-file acceptance is staged, backed up under `.looper/backups/`, and rolled back if application fails.
+- Commands have timeouts and stored-output limits.
+- Child processes inherit only essential system variables by default. Opt specific variables in with `execution.env_allowlist`.
 
-## Python Runtime
+Review every command and candidate diff before running `looper accept`.
 
-Looper targets Python 3.11+ and is compatible with newer Python 3 releases. When it runs evals, gates, or command mutators, it creates local `.looper/bin/python` and `.looper/bin/python3` launchers that point to the Python executable running Looper. That means example configs can keep using simple commands such as:
-
-```yaml
-runner:
-  command: "python examples/prompt_optimization/evals/run_eval.py"
-```
-
-Set `LOOPER_PYTHON=/path/to/python` before running Looper if you want those commands to use a specific Python 3 interpreter.
-
-## Reviewing Versions
-
-Every new version is recorded with:
-
-- the hypothesis being tested
-- a summary of what changed
-- a patch file for the edited artifacts
-- the score, gates, stdout, and stderr
-- a generated review with what worked, what needs improvement, and a recommendation
-
-The append-only ledger is `.looper/versions.jsonl`. The human-friendly surfaces are:
-
-```bash
-looper report
-looper dashboard
-```
-
-The dashboard is a static HTML file, so it can be opened directly from `.looper/reports/dashboard.html`.
-
-## Dogfood Looper On This Repo
-
-Looper can optimize its own README with the reusable dogfood loop in `examples/repo_dogfood/`.
-
-```bash
-looper baseline --config examples/repo_dogfood/looper.yaml
-looper run --rounds 1 --variants 3 --config examples/repo_dogfood/looper.yaml
-looper report --config examples/repo_dogfood/looper.yaml
-looper accept best --config examples/repo_dogfood/looper.yaml
-```
-
-The dogfood eval rewards README variants that explain the self-improvement workflow, point to `.looper/reports/latest.md`, and keep the accepted change reviewable.
-
-After accepting a dogfood result, review the diff and run `pytest` before committing or pushing the change.
-
-## Included Examples
-
-Looper ships with five deterministic examples:
-
-| Example | Artifact type | Mutator | Start command |
-|---|---|---|---|
-| Prompt optimization | `prompt` | `stub` | `looper init --example prompt` |
-| Agent instructions | `markdown` | `stub` | `looper init --example instructions` |
-| Tool schema | `json` | `command` | `looper init --example schema` |
-| MCP tool selection | `json` | `command` | `looper init --example mcp` |
-| Looper dogfood | `markdown` | `command` | `looper init --example dogfood` |
-
-Each example uses the same workflow:
-
-```bash
-looper baseline
-looper run --rounds 1 --variants 3
-looper report
-looper accept best
-```
-
-## Example `looper.yaml`
+## Configuration
 
 ```yaml
 name: improve-support-agent-prompt
@@ -172,6 +67,9 @@ artifacts:
 runner:
   command: "python examples/prompt_optimization/evals/run_eval.py"
   result_path: ".looper/result.json"
+  timeout_seconds: 300
+  max_output_chars: 200000
+  repeats: 3
 
 metric:
   name: score
@@ -180,19 +78,40 @@ metric:
 gates:
   - name: no_forbidden_phrase
     command: "python examples/prompt_optimization/evals/gate_no_forbidden.py"
+    timeout_seconds: 60
 
 search:
   variants_per_round: 3
-  rounds: 1
+  rounds: 2
   selector: best_score_with_gates
+  min_improvement: 0.01
+  seed: 42
 
 mutator:
   provider: stub
+
+execution:
+  inherit_env: false
+  env_allowlist:
+    - MY_EVAL_API_KEY
+
+workspace:
+  include_untracked: false
+  exclude:
+    - data/raw/**
+  max_copy_mb: 512
+
+budget:
+  max_experiments: 12
+  max_total_cost_usd: 5.0
+  max_total_duration_seconds: 1800
 ```
+
+`rounds` are iterative: every variant in round one starts from the baseline; if that round has an improvement, every variant in round two starts from its winner. A later round only advances when it clears `min_improvement` and all gates.
 
 ## Result Contract
 
-The runner command must write JSON to the configured `result_path`.
+The runner writes JSON to `LOOPER_RESULT_PATH`. Scores must be finite numbers.
 
 ```json
 {
@@ -206,59 +125,91 @@ The runner command must write JSON to the configured `result_path`.
 }
 ```
 
+When `runner.repeats` is above one, Looper runs the evaluator repeatedly with `LOOPER_EVALUATION_INDEX`, stores every sample, and selects using the mean score. Numeric metrics are averaged; `cost_usd` is summed.
+
 ## Command Mutator Contract
 
-Set `mutator.provider: command` when you want a local script to edit artifacts. Looper runs the command from the workspace root and provides:
+Set `mutator.provider: command` to run a trusted local script that edits configured artifacts in its workspace. Looper provides:
 
 - `LOOPER_ARTIFACTS`: JSON list of configured artifact paths
-- `LOOPER_EXPERIMENT_INDEX`: zero-based variant index
-- `LOOPER_WORKSPACE`: path to the isolated workspace
-- `LOOPER_MUTATION_META_PATH`: optional JSON file path for version metadata
-- `LOOPER_PYTHON`: Python executable used by Looper
-- `LOOPER_PYTHON_VERSION`: Python version used by Looper
+- `LOOPER_EXPERIMENT_ID`: version identifier
+- `LOOPER_EXPERIMENT_INDEX`: zero-based experiment index
+- `LOOPER_WORKSPACE`: isolated workspace path
+- `LOOPER_MUTATION_META_PATH`: optional metadata JSON destination
+- `LOOPER_SEED`: deterministic base seed
+- `LOOPER_PYTHON` and `LOOPER_PYTHON_VERSION`: active runtime details
 
-The command should edit the configured artifact files in place and exit with code `0`.
-
-To make the version log more useful, command mutators can write metadata to `LOOPER_MUTATION_META_PATH`:
+Metadata is optional:
 
 ```json
 {
-  "hypothesis": "Adding explicit confirmation language will reduce unsafe tool calls.",
-  "changes": ["Added confirmation requirement to update_deal."],
+  "hypothesis": "Explicit confirmation language will reduce unsafe tool calls.",
+  "changes": ["Added confirmation requirements."],
   "artifacts": ["server/tools.json"]
 }
 ```
 
-## What Looper Is Not
+The artifact list is checked against configuration, but Looper independently hashes every configured artifact and treats the detected changes as authoritative.
 
-- not another agent framework
-- not another observability dashboard
-- not only a prompt optimizer
-- not only a code optimizer
-- not tied to CrewAI, LangGraph, or Claude Code
+## Review and Operations
 
-## What Looper Should Become
-
-Looper should become the local-first engine for self-improving agent systems:
-
-```text
-editable artifact + evaluator + gates = improvement loop
+```bash
+looper validate                 # schema and path checks
+looper doctor                   # workspace/runtime preflight
+looper list [--json]            # active versions
+looper show exp_0001 [--json]   # one version
+looper diff exp_0001            # recorded patch
+looper report                   # Markdown + HTML dashboard
+looper accept best --dry-run    # integrity/conflict check only
+looper reset                    # preview state reset
+looper reset --yes              # archive state and reset
+looper clean                    # preview workspace cleanup
+looper clean --yes              # remove workspaces
+looper clean --all --yes        # also remove reports/results and reset state
 ```
 
-Initial artifact types:
+After acceptance, start a new baseline before running more experiments. This prevents results from different project states from being mixed.
 
-- prompts
-- MCP/tool schemas
-- RAG configs
-- workflow YAML/JSON
-- markdown instructions
-- code files
+## Local State
 
-Later adapters:
+Looper writes ignored state under `.looper/`:
 
-- LangGraph
-- CrewAI
-- OpenAI Agents SDK
-- Claude Code plugin
-- Cursor / Codex plugin
-- MCP server/tool-schema optimization
+```text
+.looper/
+  state.json
+  versions.jsonl
+  acceptances.jsonl
+  archive/
+  backups/
+  experiments/<version>/
+    result.json
+    gates.json
+    diff.patch
+    review.md
+  reports/
+    latest.md
+    dashboard.html
+  workspaces/
+```
+
+State writes are atomic and guarded by a process lock. The JSONL ledgers remain append-only across state resets.
+
+## Included Examples
+
+| Example | Artifact | Mutator | Initialize |
+|---|---|---|---|
+| Prompt optimization | prompt | deterministic stub | `looper init --example prompt` |
+| Agent instructions | Markdown | deterministic stub | `looper init --example instructions` |
+| Tool schema | JSON | command | `looper init --example schema` |
+| MCP tool selection | JSON | command | `looper init --example mcp` |
+| README dogfood | Markdown | command | `looper init --example dogfood` |
+
+All five can run in a fresh directory. The dogfood initializer creates a safe starter `README.md` when one does not already exist.
+
+## Python Runtime
+
+Looper supports Python 3.11 through 3.14. It creates `.looper/bin/python` and `.looper/bin/python3` shims pointing to the interpreter running Looper. Set `LOOPER_PYTHON` to override that interpreter.
+
+## Scope
+
+Looper is an experiment engine, not an agent framework or a general-purpose sandbox. The current mutators are deterministic stubs and trusted local commands. Model-backed mutation providers, Git worktrees, framework adapters, and distributed execution remain future work.

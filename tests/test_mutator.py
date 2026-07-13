@@ -54,14 +54,12 @@ Path(os.environ["LOOPER_MUTATION_META_PATH"]).write_text(
 
 
 def test_command_mutator_requires_command(tmp_path):
-    cfg = LooperConfig.model_validate(
-        {
-            "name": "command-mutator-test",
-            "artifacts": [{"id": "schema", "type": "json", "path": "schema.json"}],
-            "runner": {"command": "echo ok", "result_path": ".looper/result.json"},
-            "mutator": {"provider": "command"},
-        }
-    )
-
     with pytest.raises(ValueError, match="mutator.command is required"):
-        Mutator(cfg).mutate(tmp_path, 0)
+        LooperConfig.model_validate(
+            {
+                "name": "command-mutator-test",
+                "artifacts": [{"id": "schema", "type": "json", "path": "schema.json"}],
+                "runner": {"command": "echo ok", "result_path": ".looper/result.json"},
+                "mutator": {"provider": "command"},
+            }
+        )

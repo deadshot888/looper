@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 - 2026-07-13
+
+- Made candidate artifacts immutable during evaluation and verified hashes again before acceptance.
+- Added isolated baseline workspaces, project/config fingerprints, conflict-aware acceptance, rollback backups, atomic state writes, and process locking.
+- Added safe path validation, command timeouts, output caps, environment allowlists, repeated evaluations, deterministic seeds, minimum-improvement thresholds, and run budgets.
+- Made rounds iterative so each new round advances from the previous winning parent.
+- Added `validate`, `doctor`, `list`, `show`, `diff`, `reset`, `clean`, `--version`, and acceptance dry-run commands.
+- Added cross-platform CI, wheel smoke tests, linting, coverage, development dependencies, and expanded integrity tests.
+- Fixed the packaged dogfood initializer and consolidated packaged example sources.
+
 ## 0.2.0 - 2026-07-10
 
 - Added Python 3 command shims so `python` and `python3` commands run through the active Looper runtime.

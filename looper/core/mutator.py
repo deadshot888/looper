@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 from looper.core.command_env import build_command_env
 from looper.core.config import ArtifactConfig, LooperConfig
-
+from looper.core.errors import CommandTimeoutError
+from looper.core.integrity import file_hash
+from looper.core.process import run_command
 
 STUB_IMPROVEMENTS = [
     "\n\nWhen answering, cite the policy or source used.",
@@ -50,6 +51,7 @@ class Mutator:
             raise ValueError("mutator.command is required when mutator.provider is 'command'.")
 
         artifact_paths = [artifact.path for artifact in self.cfg.artifacts]
+        before_hashes = {path: file_hash(workspace / path) for path in artifact_paths}
         metadata_path = workspace / ".looper" / "mutation.json"
         if metadata_path.exists():
             metadata_path.unlink()
@@ -57,6 +59,7 @@ class Mutator:
             workspace,
             artifact_paths,
             f"exp_{experiment_index + 1:04d}",
+            self.cfg.execution,
             {
                 "LOOPER_EXPERIMENT_INDEX": str(experiment_index),
                 "LOOPER_MUTATION_META_PATH": str(metadata_path),
@@ -64,28 +67,35 @@ class Mutator:
             },
         )
 
-        completed = subprocess.run(
+        completed = run_command(
             self.cfg.mutator.command,
-            shell=True,
-            cwd=str(workspace),
-            env=env,
-            capture_output=True,
-            text=True,
+            workspace,
+            env,
+            float(self.cfg.mutator.timeout_seconds),
+            int(self.cfg.mutator.max_output_chars),
         )
-        if completed.returncode != 0:
+        if completed.timed_out:
+            raise CommandTimeoutError(
+                f"Mutator command timed out after {self.cfg.mutator.timeout_seconds:g} seconds."
+            )
+        if completed.exit_code != 0:
             raise RuntimeError(
-                f"Mutator command failed with exit code {completed.returncode}\n"
+                f"Mutator command failed with exit code {completed.exit_code}\n"
                 f"STDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
             )
         metadata = self._read_metadata(metadata_path)
         metadata_artifacts = metadata.get("artifacts")
-        changed_artifacts = (
-            [str(path) for path in metadata_artifacts]
-            if isinstance(metadata_artifacts, list)
-            else artifact_paths
-        )
+        if metadata_artifacts is not None:
+            if not isinstance(metadata_artifacts, list):
+                raise ValueError("Mutator metadata 'artifacts' must be a list")
+            unknown = sorted(set(str(path) for path in metadata_artifacts) - set(artifact_paths))
+            if unknown:
+                raise ValueError(f"Mutator metadata listed unconfigured artifacts: {', '.join(unknown)}")
+        actual_changes = [
+            path for path in artifact_paths if before_hashes[path] != file_hash(workspace / path)
+        ]
         return MutationResult(
-            artifacts=changed_artifacts,
+            artifacts=actual_changes,
             hypothesis=str(
                 metadata.get("hypothesis")
                 or f"Command variant {experiment_index + 1} tests whether the generated artifact changes improve {self.cfg.metric.name} while passing gates."
@@ -114,7 +124,7 @@ class Mutator:
                     changed = True
             if changed:
                 path.write_text(text, encoding="utf-8")
-            return [artifact.path]
+            return [artifact.path] if changed else []
 
         raise NotImplementedError(
             f"Mutator provider {self.cfg.mutator.provider!r} is not implemented in V0 starter."

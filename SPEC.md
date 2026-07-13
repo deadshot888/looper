@@ -1,119 +1,64 @@
-# Looper V0 Spec
+# Looper Product Specification
 
-## Core Thesis
-
-Looper is a generic local-first loop runner for improving agentic systems.
-
-It starts from a simple interface:
+## Thesis
 
 ```text
-editable artifact + eval command + gates = improvement loop
+editable artifact + mutator + evaluator + gates + selector = inspectable improvement loop
 ```
 
-## Primary User
+Looper helps developers run controlled local experiments over agent artifacts. Its trust layer is the immutable candidate snapshot, stored evidence, and explicit acceptance step—not an unsupported promise that arbitrary commands are sandboxed.
 
-A developer building or tuning an agentic system.
+## Supported Artifacts and Mutators
 
-## V0 Positioning
+Artifacts may be prompts, Markdown, YAML, JSON, code, or generic files. A project can configure one or more relative artifact paths.
 
-**Set up self-improving loops for your agents.**
+Current mutators:
 
-The first version should be boring, local, and useful. It should run in a repo and produce a diff.
+- `stub`: deterministic text guidance for examples;
+- `command`: a trusted local command that edits configured artifacts in an isolated workspace.
 
-## Artifacts
+Model-backed providers are not accepted by the schema until implemented.
 
-V0 artifact types:
-
-| Type | Example |
-|---|---|
-| prompt | `prompts/support_agent.md` |
-| markdown | `AGENTS.md`, `CLAUDE.md` |
-| yaml | LangGraph/CrewAI config |
-| json | MCP tool schema |
-| code | Python file |
-| generic | any file |
-
-## Loop Lifecycle
+## Required Lifecycle
 
 ```text
-init
-  -> baseline
-  -> variant generation
-  -> evaluation
-  -> gates
-  -> selection
-  -> report
-  -> accept
+init -> validate/doctor -> baseline -> iterative rounds -> report/diff -> accept dry-run -> accept
 ```
 
-## Baseline
+Each round creates variants from one parent. Round one uses the baseline. Later rounds use the prior round winner only when it passes every gate and clears the configured improvement threshold.
 
-Baseline is the current system before mutation.
+## Evaluation
 
-## Variant
-
-A variant is a candidate change to one or more artifacts.
-
-Each variant should store:
-
-- id
-- parent
-- hypothesis
-- change summary
-- artifact changes
-- patch path
-- score
-- metric details
-- gates
-- stdout/stderr
-- workspace path
-- status
-- generated review
+The evaluator must write a JSON object containing a finite numeric `score`. It may include metrics, `cost_usd`, and notes. Repeated evaluations produce stored score samples, a mean used for selection, and a population standard deviation in the raw result.
 
 ## Gates
 
-Gates are hard constraints.
+Gates are hard command constraints. A candidate is selectable only when the evaluator succeeds, artifact integrity remains intact, and every gate exits successfully before its timeout.
 
-An experiment can improve score and still be rejected if gates fail.
+## Budgets
 
-Examples:
+The engine can stop on total experiment count, reported cost, or experiment duration. Budget termination is recorded in state and reports.
 
-- tests pass
-- no schema break
-- cost below threshold
-- no forbidden phrase
-- no policy violation
-- valid JSON output
+## Version Evidence
 
-## Reports
+Every version records:
 
-Report should be the trust layer.
+- session, parent, round and variant identifiers;
+- hypothesis and change summary;
+- cumulative baseline diff and artifact hashes;
+- mean score, samples, metrics, costs and durations;
+- gates, stdout, stderr and status;
+- configuration/project fingerprints;
+- generated review and recommendation.
 
-It should answer:
+## Acceptance Requirements
 
-- Did anything improve?
-- Which variant won?
-- By how much?
-- What changed?
-- What hypothesis was tested?
-- What worked in each version?
-- What still needs improvement?
-- Which gates passed/failed?
-- Should I accept the diff?
+The engine must reject stale, failed, gate-blocked, missing, moved, or hash-mismatched candidates. Root edits after the baseline must block acceptance unless the user explicitly forces it after review. Successful acceptance must preserve rollback copies and write an audit entry.
 
-The Markdown report is paired with a static HTML dashboard for quick comparison across versions. Both are local artifacts under `.looper/reports/`.
+## Non-goals
 
-## Future Direction
-
-After V0:
-
-1. OpenAI/Anthropic mutator providers
-2. MCP tool-schema optimization template
-3. RAG config optimization template
-4. LangGraph adapter
-5. CrewAI adapter
-6. GitHub Action
-7. PR creation
-8. experiment graph/tree search
-9. Pareto selection
-10. shared experiment memory
+- security sandboxing for hostile commands;
+- hosted orchestration;
+- framework-specific agent execution;
+- automatic publishing, branching, or pull requests;
+- model-provider integrations in the core V0.x schema.

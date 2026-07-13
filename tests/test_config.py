@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from looper.core.config import load_config
+import pytest
+from pydantic import ValidationError
+
+from looper.core.config import LooperConfig, load_config
 
 
 def test_load_example_config():
@@ -35,3 +38,14 @@ def test_load_all_example_configs():
     assert configs[3].mutator.provider == "command"
     assert configs[4].artifacts[0].path == "README.md"
     assert configs[4].mutator.provider == "command"
+
+
+def test_config_rejects_non_positive_search_and_unsupported_provider():
+    base = {
+        "artifacts": [{"id": "a", "path": "a.md"}],
+        "runner": {"command": "echo ok"},
+    }
+    with pytest.raises(ValidationError):
+        LooperConfig.model_validate({**base, "search": {"rounds": 0}})
+    with pytest.raises(ValidationError):
+        LooperConfig.model_validate({**base, "mutator": {"provider": "openai"}})
