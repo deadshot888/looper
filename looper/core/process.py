@@ -61,7 +61,7 @@ def run_command(
         "errors": "replace",
     }
     if os.name == "nt":
-        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        kwargs["creationflags"] = cast(Any, subprocess).CREATE_NEW_PROCESS_GROUP
     else:
         kwargs["start_new_session"] = True
 
