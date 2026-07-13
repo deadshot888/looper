@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+
 from typer.testing import CliRunner
 
 from looper.cli import app
@@ -35,6 +37,20 @@ def test_run_writes_version_log_reviews_and_dashboard(tmp_path, monkeypatch):
     html = dashboard.read_text(encoding="utf-8")
     assert "Version Reviews" in html
     assert "Python" in html
+
+
+def test_initialized_example_runs_before_files_are_committed(tmp_path, monkeypatch):
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    project = tmp_path / "wheel-smoke"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    runner = CliRunner()
+
+    init_result = runner.invoke(app, ["init", "--example", "prompt"])
+    assert init_result.exit_code == 0, init_result.output
+
+    run_result = runner.invoke(app, ["run", "--rounds", "1", "--variants", "1"])
+    assert run_result.exit_code == 0, run_result.output
 
 
 def test_operational_commands_are_usable_end_to_end(tmp_path, monkeypatch):

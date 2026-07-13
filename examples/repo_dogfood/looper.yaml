@@ -25,3 +25,7 @@ search:
 mutator:
   provider: command
   command: "python examples/repo_dogfood/mutators/improve_readme.py"
+
+workspace:
+  # `looper init` creates these example files before they are committed to Git.
+  include_untracked: true

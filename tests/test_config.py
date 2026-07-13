@@ -38,6 +38,7 @@ def test_load_all_example_configs():
     assert configs[3].mutator.provider == "command"
     assert configs[4].artifacts[0].path == "README.md"
     assert configs[4].mutator.provider == "command"
+    assert all(config.workspace.include_untracked for config in configs)
 
 
 def test_config_rejects_non_positive_search_and_unsupported_provider():

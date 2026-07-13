@@ -8,6 +8,7 @@ import time
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
 
 @dataclass(frozen=True)
@@ -117,7 +118,7 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
         )
     else:
         with suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGKILL)  # type: ignore[attr-defined]
+            cast(Any, os).killpg(process.pid, cast(Any, signal).SIGKILL)
     with suppress(OSError):
         process.kill()
 

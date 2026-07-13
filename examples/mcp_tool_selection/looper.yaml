@@ -25,3 +25,7 @@ search:
 mutator:
   provider: command
   command: "python examples/mcp_tool_selection/mutators/improve_mcp_tools.py"
+
+workspace:
+  # `looper init` creates these example files before they are committed to Git.
+  include_untracked: true

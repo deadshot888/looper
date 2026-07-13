@@ -24,3 +24,7 @@ search:
 
 mutator:
   provider: stub
+
+workspace:
+  # `looper init` creates these example files before they are committed to Git.
+  include_untracked: true
